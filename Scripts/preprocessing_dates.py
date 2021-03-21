@@ -1,13 +1,9 @@
 import pandas as pd
 import numpy as np
 import os
-import matplotlib.pyplot as plt
-import seaborn as sns
-
 
 path = os.getcwd()
 work_dir = os.path.join(path, 'Sem 2 - Machine Learning/Project')
-
 
 dfAdm = pd.read_csv(os.path.join(work_dir, 'Data/ADMISSIONS.csv'),
     usecols=['SUBJECT_ID', 'HADM_ID', 'ADMITTIME', 'DISCHTIME',
@@ -26,7 +22,6 @@ dfAdm['NEXT_UADMITTIME'] = dfAdm.groupby('SUBJECT_ID').ADMITTIME.shift(-1)
 dfAdm['ADMISSION_TYPE'] = dfAdm['ADMISSION_TYPE'].astype(str)
 dfAdm['NEXT_UADMISSION_TYPE'] = dfAdm.groupby('SUBJECT_ID').ADMISSION_TYPE.shift(-1)
 
-
 # remove elective admissions
 discardIdx = dfAdm[dfAdm['NEXT_UADMISSION_TYPE'] == 'ELECTIVE'].index
 dfAdm.loc[discardIdx, 'NEXT_UADMITTIME'] = pd.NaT
@@ -37,8 +32,19 @@ dfAdm[['NEXT_UADMITTIME','NEXT_UADMISSION_TYPE']] = dfAdm.groupby(['SUBJECT_ID']
 # get days to next admission
 dfAdm['DAYS_NEXT_UADM']=  (dfAdm.NEXT_UADMITTIME - dfAdm.DISCHTIME).dt.total_seconds()/(24*60*60)
 
-# drop no unplanned readmissions
-# 47577 without readmissions, 11399 readmissions (6693 unique IDs)
-dfAdm.drop(dfAdm[pd.isna(dfAdm.NEXT_UADMISSION_TYPE)].index, inplace=True)
+# cleaned unplanned readmissions total
+# but drop newborn = 51113 x 10
+dfAdm.drop(dfAdm[dfAdm.ADMISSION_TYPE == 'NEWBORN'].index, inplace=True)
+dfAdm.to_csv(os.path.join(work_dir, 'Data/cleanedadm.csv'), index=False)
 
+# get date of deaths dod_ssn ({ATIENTS})
+# make sure death doesn't occur in next 30 days 
+
+
+"""
+# just unplanned readmissions only 
+# 47577 without readmissions, 11399 readmissions (6693 unique IDs)
+# only for data viz part 
+dfAdm.drop(dfAdm[pd.isna(dfAdm.NEXT_UADMISSION_TYPE)].index, inplace=True)
 dfAdm.to_csv(os.path.join(work_dir, 'Data/ureadmissions.csv'), index=False)
+"""
