@@ -27,14 +27,14 @@ dfNotes = dfNotes.sort_values(['SUBJECT_ID','CHARTDATE', 'CATEGORY'],
             ascending=[True, True, False]).reset_index(drop = True)
 
 # flatten notes
-dfConcNotes = dfNotes[['SUBJECT_ID', 'TEXT']].copy()
+dfConcNotes = dfNotes[['SUBJECT_ID', 'HADM_ID', 'TEXT']].copy()
 dfConcNotes = (
     dfConcNotes
-    .groupby('SUBJECT_ID')['TEXT']
+    .groupby('HADM_ID')['TEXT']
     .agg(' '.join)
     .reset_index()
     .rename(columns={"TEXT":"TEXT_CONCAT"})
 )
 
 # checkpoint
-dfConcNotes.to_csv(os.path.join(work_dir, 'Data/cleanednotes.csv'), index=True)
+dfConcNotes.to_csv(os.path.join(work_dir, 'Data/cleanednotes.csv'), index=False)
