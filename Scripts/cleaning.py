@@ -5,6 +5,7 @@ import re
 from nltk.tokenize.toktok import ToktokTokenizer
 import nltk
 import spacy
+import scispacy 
 
 path = os.getcwd()
 work_dir = os.path.join(path, 'Sem 2 - Machine Learning/Project')
@@ -19,9 +20,11 @@ dfFull = pd.read_csv(os.path.join(work_dir, 'Data/merged.csv'),
 df_X = dfFull.TEXT_CONCAT
 df_Y = dfFull.TARGET
 
-# init
+# init spacy
 nlp = spacy.load('en_core_web_lg')
+nlp2 = spacy.load('en_core_sci_scibert', exclude=['ner'])
 
+# init nltk tokenizer 
 tokenizer = ToktokTokenizer()
 stopword_list = nltk.corpus.stopwords.words('english')
 stopword_list.remove('no')
@@ -30,12 +33,11 @@ stopword_list.remove('not')
 def lowercase(x):
     return x.lower()
 
-def decontracted(phrase):
-    # specific
+def targetted(phrase):
     phrase = re.sub(r"won\'t", "will not", phrase)
     phrase = re.sub(r"can\'t", "can not", phrase)
-
-    # TODO: medical PO PID TDS etc
+    routine = re.compile(r"Followup.Instructions:.*", re.DOTALL)
+    phrase = re.sub(routine, "", phrase)
     return phrase
 
 def remove_stopwords(text):
@@ -49,3 +51,25 @@ def lemmatize_text(text):
     text = nlp(text)
     text = ' '.join([word.lemma_ if word.lemma_ != '-PRON-' else word.text for word in text])
     return text
+
+# more extensive stopword removal, lemmatization 
+def nltk(text):
+    text = lowercase(text)
+    text = targetted(text)
+    text = remove_stopwords(text)
+    text = lemmatize_text(text)
+    return text 
+
+def spacy(text):
+    text = lowercase(text)
+    text = lemmatize_text(text)
+    return text 
+
+def spacy_2(text):
+    text = nlp(text)
+    return text 
+
+def scispacy(text):
+    text = targetted(text)
+    text = nlp2(text)
+    return text 
