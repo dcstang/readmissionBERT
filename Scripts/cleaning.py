@@ -30,15 +30,22 @@ stopword_list = nltk.corpus.stopwords.words('english')
 stopword_list.remove('no')
 stopword_list.remove('not')
 
+# TODO: implement spellchecker 
+
+
 def lowercase(x):
     return x.lower()
 
-def targetted(phrase):
-    phrase = re.sub(r"won\'t", "will not", phrase)
-    phrase = re.sub(r"can\'t", "can not", phrase)
+def targetted(text):
+    text = re.sub(r"won\'t", "will not", text)
+    text = re.sub(r"can\'t", "can not", text)
+    # cap number of consecutive newline characters to 2
+    newline_regex = re.compile(r'(\\n){3,}') 
+    text = newline_regex.sub(r' \\n\\n ',text)
+
     routine = re.compile(r"Followup.Instructions:.*", re.DOTALL)
-    phrase = re.sub(routine, "", phrase)
-    return phrase
+    text = re.sub(routine, "", text)
+    return text
 
 def remove_stopwords(text):
     tokens = tokenizer.tokenize(text)
