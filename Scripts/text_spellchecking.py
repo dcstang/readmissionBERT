@@ -7,9 +7,7 @@ from spacy.symbols import ORTH
 import scispacy 
 from collections import Counter
 from spellchecker import SpellChecker
-
-import nltk
-from nltk.tokenize.toktok import ToktokTokenizer
+from flashtext import KeywordProcessor
 
 path = os.getcwd()
 work_dir = os.path.join(path, 'Sem 2 - Machine Learning/Project')
@@ -17,7 +15,8 @@ work_dir = os.path.join(path, 'Sem 2 - Machine Learning/Project')
 dfFull = pd.read_csv(os.path.join(work_dir, 'Data/merged.csv'),
       dtype={'SUBJECT_ID' : 'UInt32', 'HADM_ID' : 'UInt32', 'TEXT_CONCAT' : 'string',
          'ADMISSION_TYPE' : 'string', 'ETHNICITY' : 'string', 'DIAGNOSIS' : 'string',
-         'HOSPITAL_EXPIRE_FLAG' : 'bool', 'MORTALITY_30D' : 'bool', 'TARGET' : 'bool'},
+         'HOSPITAL_EXPIRE_FLAG' : 'bool', 'MORTALITY_30D' : 'bool', 'TARGET' : 'bool',
+         'AGE' : 'UInt8'},
       parse_dates=['ADMITTIME', 'DISCHTIME', 'NEXT_UADMITTIME', 'DOD_SSN'],
       header=0)
 
@@ -27,11 +26,6 @@ df_Y = dfFull.TARGET
 # init spacy
 nlp = spacy.load('en_core_sci_scibert', exclude=['ner'])
 
-# init nltk tokenizer 
-tokenizer = ToktokTokenizer()
-stopword_list = nltk.corpus.stopwords.words('english')
-stopword_list.remove('no')
-stopword_list.remove('not')
 
 ## compile a series of regex 
 # cap number of consecutive newline characters to 2
@@ -100,24 +94,6 @@ def regex_cleaning(text):
 
     return text
 
-def remove_stopwords(text):
-    tokens = tokenizer.tokenize(text)
-    tokens = [token.strip() for token in tokens]
-    filtered_tokens = [token for token in tokens if token not in stopword_list]
-    filtered_text = ' '.join(filtered_tokens)    
-    return filtered_text
-
-def lemmatize_text(text):
-    text = nlp(text)
-    text = ' '.join([word.lemma_ if word.lemma_ != '-PRON-' else word.text for word in text])
-    return text
-
-# more extensive stopword removal, lemmatization 
-def nltk(text):
-    text = regex_cleaning(text)
-    text = remove_stopwords(text)
-    tokenized_text = lemmatize_text(text)
-    return tokenized_text 
 
 # scispacy tokenization
 def scispacy_tokenization(text, counter):
