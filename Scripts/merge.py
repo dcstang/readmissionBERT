@@ -3,6 +3,7 @@ import numpy as np
 import os
 import spacy
 import scispacy
+import re
 
 path = os.getcwd()
 work_dir = os.path.join(path, 'Sem 2 - Machine Learning/Project')
@@ -42,7 +43,7 @@ dfDob = pd.read_csv(os.path.join(work_dir, 'Data/PATIENTS.csv'),
 
 dfAge = pd.merge(dfChartDate, dfDob, on='SUBJECT_ID', how='left')
 assert len(dfAge) == len(dfChartDate)
-s
+
 dfAge['AGE'] = dfAge['CHARTDATE'].dt.year - dfAge['DOB'].dt.year
 dfAge.loc[dfAge['AGE'] > 200, 'AGE'] = 90
 
