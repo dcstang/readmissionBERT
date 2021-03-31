@@ -9,6 +9,7 @@ from collections import Counter
 from spellchecker import SpellChecker
 from flashtext import KeywordProcessor
 import nltk
+from tqdm import tqdm
 
 path = os.getcwd()
 work_dir = os.path.join(path, 'Sem 2 - Machine Learning/Project')
@@ -28,6 +29,7 @@ nlp = spacy.load('en_core_sci_scibert', exclude=['ner'])
 ## compile a series of regex 
 # cap number of consecutive newline characters to 2
 newline_regex = re.compile(r'(\\n){3,}') 
+newline_regex2 = re.compile(r'(\\r){3,}')
 ellipsis_regex = re.compile(r'(\.){2,}')
 tilda_mult_regex = re.compile(r'(~){2,}')
 atsign_mult_regex = re.compile(r'(@){2,}')
@@ -57,14 +59,17 @@ routine = re.compile(r"Followup.Instructions:.*", re.DOTALL)
 # cleaning functions 
 def regex_cleaning(text):
     text = text.lower()
+    text = text.replace("[**","[").replace("**]","]")
     text = date_regex.sub(r'\1/\2/\3',text)
     text = re.sub(r"won\'t", "will not", text)
     text = re.sub(r"can\'t", "can not", text)
     text = re.sub(routine, "", text)
     text = newline_regex.sub(r' \\n\\n ',text)
+    text = newline_regex2.sub(r' \\n\\n ',text)
     text = ellipsis_regex.sub(r'.',text)
     text = tilda_mult_regex.sub(r'~',text)
     text = atsign_mult_regex.sub(r'@',text)
+    
     text = text.replace("\n"," <PAR> ")
     text = bracket_regex.sub(r'\1 \2 \3',text)
     text = bracket_regex2.sub(r'\1 \2 \3',text)
@@ -109,16 +114,9 @@ def scispacy_tokenization(text, counter):
     num_tokens.append(len(list(tokens)))
     num_sents.append(len(tokenized_text))
 
-    # verbose feedback
-    global i
-    i += 1
-    if (i % 1000) == 0:
-        print(i)
-
     return tokenized_text 
 
 # init
-i = 0
 num_tokens = list()
 num_sents = list()
 
@@ -131,15 +129,16 @@ nlp.tokenizer.add_special_case(u'<UNK>', [{ORTH: u'<UNK>'}])
 # 3. spellchecker with levenshtein distance = 1
 
 word_freq = Counter()
-dfFull["TEXT_CONCAT"] = dfFull["TEXT_CONCAT"].apply(scispacy_tokenization, args = (word_freq,))
+tqdm.pandas(desc="Pandas Apply Progress")
+dfFull["TEXT_CONCAT"] = dfFull["TEXT_CONCAT"].progress_apply(scispacy_tokenization, args = (word_freq,))
 
 # freq and infreq words 
 infreq_words = [word for word in word_freq.keys() if word_freq[word] <= 3 and word[0].isdigit() == False]
-print(len(infreq_words))
-sorted(infreq_words)[10000:10050]
+print(len(infreq_words)) #102,784
+# sorted(infreq_words)[10000:10050]
 
 freq_words = [word for word in word_freq.keys() if word_freq[word] > 3]
-add_to_dictionary = " ".join(freq_words)
+add_to_dictionary = " ".join(freq_words) #1,162,524
 f=open(os.path.join(work_dir, "Data/mimic_dict.txt"), "w+")
 f.write(add_to_dictionary)
 f.close()
@@ -157,7 +156,7 @@ for i, word in enumerate(misspelled):
         misspell_dict[word] = spell.correction(word)
 
 # inspect dictionary 
-print(len(misspell_dict))
+print(len(misspell_dict)) #66,635
 list(misspell_dict.items())[:30]
 
 # tokenize remainding words <4 freq as UNK 
@@ -166,7 +165,7 @@ print(len(unk_words))
 unk_words[:100]
 
 np.savetxt(os.path.join(work_dir, 'Data/discharge_unk_words.txt'), unk_words, fmt='%s', newline=os.linesep)
-f=open(os.path.join(work_dir, "Data/discharge_typos.txt", "w+"))
+f=open(os.path.join(work_dir, "Data/discharge_typos.txt"), "w+")
 for key in misspell_dict:
     f.write(key + '\t' + misspell_dict[key] + '\n')
 f.close()
@@ -183,19 +182,17 @@ for keyword_name, clean_name in zip(keywords, clean):
 for unk in unk_words:
     processor.add_keyword(unk, "<UNK>")
 
-counter = 0
-def fix_typos(text):
-    global counter
-    
-    found = processor.replace_keywords(text)
-    
-    counter+=1
-    if (counter % 1000) == 0:
-        print (counter)
-    
+
+def flatten_list(text):
+    return ''.join(text)    
+
+def fix_typos(text):   
+    found = processor.replace_keywords(text)    
     return found
 
-dfFull["TEXT_CONCAT"] = dfFull["TEXT_CONCAT"].apply(fix_typos)
+
+dfFull["TEXT_CONCAT"] = dfFull["TEXT_CONCAT"].progress_apply(flatten_list)
+dfFull["TEXT_CONCAT"] = dfFull["TEXT_CONCAT"].progress_apply(fix_typos)
 
 
 # save dataframe here 
