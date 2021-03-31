@@ -8,6 +8,7 @@ import scispacy
 from collections import Counter
 from spellchecker import SpellChecker
 from flashtext import KeywordProcessor
+import nltk
 
 path = os.getcwd()
 work_dir = os.path.join(path, 'Sem 2 - Machine Learning/Project')
@@ -20,12 +21,9 @@ dfFull = pd.read_csv(os.path.join(work_dir, 'Data/merged.csv'),
       parse_dates=['ADMITTIME', 'DISCHTIME', 'NEXT_UADMITTIME', 'DOD_SSN'],
       header=0)
 
-df_X = dfFull.TEXT_CONCAT
-df_Y = dfFull.TARGET
 
 # init spacy
 nlp = spacy.load('en_core_sci_scibert', exclude=['ner'])
-
 
 ## compile a series of regex 
 # cap number of consecutive newline characters to 2
