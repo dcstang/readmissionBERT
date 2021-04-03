@@ -20,7 +20,6 @@ from sklearn.model_selection import StratifiedKFold, train_test_split
 from sklearn.metrics import roc_auc_score, accuracy_score, \
 					confusion_matrix, precision_score, recall_score,  \
 					f1_score, roc_curve, auc
-import xgboost as xgb
 
 import tensorflow as tf
 import keras
@@ -40,98 +39,15 @@ dfUadm = pd.read_csv(os.path.join(work_dir, 'Data/CLEANED_FULL_UADM.csv'),
 
 
 ########################### reconsider fasttext ###########################
-# init nltk tokenizer 
-tokenizer = ToktokTokenizer()
-stopword_list = nltk.corpus.stopwords.words('english')
-stopword_list.remove('no')
-stopword_list.remove('not')
+# ? faster lemmatization process 
+# ? stop words _ remove no from sklearn
+# ? need to do PAR removal for logistic regression
 
-nlp = spacy.load('en_core_sci_scibert', exclude=['ner'])
-
-def remove_stopwords(text):
-    tokens = tokenizer.tokenize(text)
-    tokens = [token.strip() for token in tokens]
-    filtered_tokens = [token for token in tokens if token not in stopword_list]
-    filtered_text = ' '.join(filtered_tokens)    
-    return filtered_text
-
-def lemmatize_text(text):
-    text = nlp(text)
-    text = ' '.join([word.lemma_ if word.lemma_ != '-PRON-' else word.text for word in text])
-    return text
-
-# pre-embedding feature engineering:  stopword removal, lemmatization 
-def lemmatization_stopword(text):
-    text = remove_stopwords(text)
-    tokenized_text = lemmatize_text(text)
-    return tokenized_text
-
-# execute final clean before tf-idf
+# execute final clean
 tqdm.pandas(desc="Pandas Apply Progress")
 dfUadm['TEXT_CONCAT'] = dfUadm['TEXT_CONCAT'].progress_apply(lemmatization_stopword) ##?? too long 
 
 
-#############################################################################
-
-# pad to longest document
-
-
-
-# Calculate the length of our vocabulary
-word_tokenizer = Tokenizer()
-word_tokenizer.fit_on_texts(train_tweets)
-
-vocab_length = len(word_tokenizer.word_index) + 1
-vocab_length
-
-def show_metrics(pred_tag, y_test):
-    print("F1-score: ", f1_score(pred_tag, y_test))
-    print("Precision: ", precision_score(pred_tag, y_test))
-    print("Recall: ", recall_score(pred_tag, y_test))
-    print("Acuracy: ", accuracy_score(pred_tag, y_test))
-    print("-"*50)
-    print(classification_report(pred_tag, y_test))
-    
-def embed(corpus): 
-    return word_tokenizer.texts_to_sequences(corpus)
-
-
-longest_train = max(texts, key=lambda sentence: len(word_tokenize(sentence)))
-length_long_sentence = len(word_tokenize(longest_train))
-
-train_padded_sentences = pad_sequences(
-    embed(texts), 
-    length_long_sentence, 
-    padding='post'
-)
-
-embeddings_dictionary = dict()
-embedding_dim = 100
-
-# Load GloVe 100D embeddings
-with open('/kaggle/input/glove6b100dtxt/glove.6B.100d.txt') as fp:
-    for line in fp.readlines():
-        records = line.split()
-        word = records[0]
-        vector_dimensions = np.asarray(records[1:], dtype='float32')
-        embeddings_dictionary [word] = vector_dimensions
-
-# embeddings_dictionary
-
-# Now we will load embedding vectors of those words that appear in the
-# Glove dictionary. Others will be initialized to 0.
-
-embedding_matrix = np.zeros((vocab_length, embedding_dim))
-
-for word, index in word_tokenizer.word_index.items():
-    embedding_vector = embeddings_dictionary.get(word)
-    if embedding_vector is not None:
-        embedding_matrix[index] = embedding_vector
-        
-embedding_matrix
-
-
-## TODO: implement countvectorizer and Tfidf
 X = dfUadm.TEXT_CONCAT
 Y = dfUadm.TARGET
 
@@ -229,37 +145,3 @@ def plot_roc(y_pred):
 
 y_pred = evaluation_plotting(logit)
 
-############## XGBoost ####################
-
-tfidf_transformer = TfidfTransformer()
-
-tfidf_transformer.fit(x_train_dtm)
-x_train_tfidf = tfidf_transformer.transform(x_train_dtm)
-
-x_train_tfidf
-
-pipe = Pipeline([
-    ('bow', CountVectorizer()), 
-    ('tfid', TfidfTransformer()),  
-    ('model', xgb.XGBClassifier(
-        learning_rate=0.1,
-        max_depth=7,
-        n_estimators=80,
-        use_label_encoder=False,
-        eval_metric='auc',
-        # colsample_bytree=0.8,
-        # subsample=0.7,
-        # min_child_weight=5,
-    ))
-])
-
-# Fit the pipeline with the data
-pipe.fit(x_train, y_train)
-
-y_pred_class = pipe.predict(x_test)
-y_pred_train = pipe.predict(x_train)
-
-print('Train: {}'.format(metrics.accuracy_score(y_train, y_pred_train)))
-print('Test: {}'.format(metrics.accuracy_score(y_test, y_pred_class)))
-
-conf_matrix(metrics.confusion_matrix(y_test, y_pred_class))
