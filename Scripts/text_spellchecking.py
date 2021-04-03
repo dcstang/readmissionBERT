@@ -10,6 +10,7 @@ from spellchecker import SpellChecker
 from flashtext import KeywordProcessor
 import nltk
 from tqdm import tqdm
+import pickle
 
 path = os.getcwd()
 work_dir = os.path.join(path, 'Sem 2 - Machine Learning/Project')
@@ -25,6 +26,7 @@ dfFull = pd.read_csv(os.path.join(work_dir, 'Data/merged.csv'),
 
 # init spacy
 nlp = spacy.load('en_core_sci_scibert', exclude=['ner'])
+tqdm.pandas(desc="Pandas Apply Progress")
 
 ## compile a series of regex 
 # cap number of consecutive newline characters to 2
@@ -54,7 +56,7 @@ dot_regex2 = re.compile(r'([^0-9])(\.)(.)')
 semicol_regex = re.compile(r'(.);(.)')
 caret_regex = re.compile(r'(.)\^(.)')
 date_regex = re.compile(r'([0-9])-([0-9][0-9]?)-([0-9])')
-routine = re.compile(r"Followup.Instructions:.*", re.DOTALL)
+routine = re.compile(r"followup.instructions*", re.DOTALL)
 
 # cleaning functions 
 def regex_cleaning(text):
@@ -129,8 +131,10 @@ nlp.tokenizer.add_special_case(u'<UNK>', [{ORTH: u'<UNK>'}])
 # 3. spellchecker with levenshtein distance = 1
 
 word_freq = Counter()
-tqdm.pandas(desc="Pandas Apply Progress")
 dfFull["TEXT_CONCAT"] = dfFull["TEXT_CONCAT"].progress_apply(scispacy_tokenization, args = (word_freq,))
+
+with open(os.path.join(work_dir, 'Data/checkpoint/word_freq.pkl'), 'wb') as outputfile:
+    pickle.dump(word_freq, outputfile)
 
 # freq and infreq words 
 infreq_words = [word for word in word_freq.keys() if word_freq[word] <= 3 and word[0].isdigit() == False]
@@ -139,7 +143,7 @@ print(len(infreq_words)) #102,784
 
 freq_words = [word for word in word_freq.keys() if word_freq[word] > 3]
 add_to_dictionary = " ".join(freq_words) #1,162,524
-f=open(os.path.join(work_dir, "Data/mimic_dict.txt"), "w+")
+f=open(os.path.join(work_dir, "Data/checkpoint/mimic_dict.txt"), "w+")
 f.write(add_to_dictionary)
 f.close()
 
@@ -147,7 +151,7 @@ f.close()
 # create mispelling dictionary
 spell = SpellChecker()
 spell.distance = 1  # set the distance parameter to just 1 edit away
-spell.word_frequency.load_text_file(os.path.join(work_dir, "Data/mimic_dict.txt"))
+spell.word_frequency.load_text_file(os.path.join(work_dir, "Data/checkpoint/mimic_dict.txt"))
 
 misspelled = spell.unknown(infreq_words)
 misspell_dict = {}
@@ -160,7 +164,7 @@ print(len(misspell_dict)) #66,635
 list(misspell_dict.items())[:30]
 
 # tokenize remainding words <4 freq as UNK 
-unk_words = [word for word in infreq_words if word not in list(misspell_dict.keys())]
+unk_words = [word for word in infreq_words if word not in set(misspell_dict.keys())]
 print(len(unk_words))
 unk_words[:100]
 
@@ -196,4 +200,82 @@ dfFull["TEXT_CONCAT"] = dfFull["TEXT_CONCAT"].progress_apply(fix_typos)
 
 
 # save dataframe here 
+dfFull.to_csv(os.path.join(work_dir, 'Data/spellchecked_FULL_UADM.csv'), index=False)
+
+# remove square brackets 
+# remove ( namepattern2 ) and  'first name8'
+# standardize pharmacy drug frequencies and route 
+# remove annoying repeats ie. five ( 5 ) => five, qd ( daily ) => qd
+# as above qid ( 4 times a day ) = qid
+# ie. by mouth => po, intravenously => iv, subcutaneously => sc
+# twice per day / b. id / q12h => bid, once per day => qd
+# spacing p o = po, p r.n = prn
+# account for <PAR> in between all above
+
+
+def regex_pharmacy_clean(text):
+    text = text.replace("[","").replace("]","")    
+    text = re.sub(r"\((.*?)\)", "", text)
+    text = re.sub(r"once daily", "qd", text)
+    text = re.sub(r"once <PAR> daily", "qd", text)
+    text = re.sub(r"once a day", "qd", text)
+    text = re.sub(r"once <PAR> a day", "qd", text)
+    text = re.sub(r"once a <PAR> day", "qd", text)
+    text = re.sub(r"q\.*\s*d", "qd", text)
+
+    text = re.sub(r"twice daily", "bid", text)
+    text = re.sub(r"twice <PAR> daily", "bid", text)
+    text = re.sub(r"twice a day", "bid", text)
+    text = re.sub(r"two times a day", "bid", text)
+    text = re.sub(r"two times daily", "bid", text)
+    text = re.sub(r"2 times a day", "bid", text)
+    text = re.sub(r"2 times daily", "bid", text)
+    text = re.sub(r"twice a <PAR> day", "bid", text)
+    text = re.sub(r"twice <PAR> a day", "bid", text)
+    text = re.sub(r"b\.*\s*i\.*\s*d", "bid", text)
+    
+    text = re.sub(r"thrice daily", "tds", text)
+    text = re.sub(r"thrice <PAR> daily", "tds", text)
+    text = re.sub(r"thrice a day", "tds", text)
+    text = re.sub(r"three times a day", "tds", text)
+    text = re.sub(r"three times daily", "tds", text)
+    text = re.sub(r"3 times a day", "tds", text)
+    text = re.sub(r"3 times daily", "tds", text)
+    text = re.sub(r"thrice a <PAR> day", "tds", text)
+    text = re.sub(r"thrice <PAR> a day", "tds", text)
+    text = re.sub(r"tid", "tds", text)
+    text = re.sub(r"t\.*\s*i\.*\s*d", "tds", text)
+
+    text = re.sub(r"four times daily", "qid", text)
+    text = re.sub(r"4 times daily", "qid", text)
+    text = re.sub(r"four times <PAR> daily", "qid", text)
+    text = re.sub(r"four times a day", "qid", text)
+    text = re.sub(r"4 times a day", "qid", text)
+    text = re.sub(r"four times a <PAR> day", "qid", text)
+    text = re.sub(r"four times <PAR> a day", "qid", text)
+    text = re.sub(r"qds", "qid", text)
+    text = re.sub(r"q\.*\s*i\.*\s*d", "qid", text)
+
+    text = re.sub(r"first name.", "", text)
+    text = re.sub(r"last name.", "", text)
+    text = re.sub(r"name.", "", text)
+    
+    text = re.sub(r"intravenousl*y*", "iv", text)
+    text = re.sub(r"subcutaneousl*y*", "sc", text)
+    text = re.sub(r"by mouth", "po", text)
+    text = re.sub(r"\bp\.*\s*o\.*\s*\b", "po ", text) #TODO: fix this for positive, potassium
+    text = re.sub(r"\bp\.*\s*r\.*\s*n\b", "prn", text)
+
+    return text
+
+def clean_symbols(text):
+    text = re.sub(r"\*", "", text)
+    text = re.sub(r"\s/", "", text)
+    text = re.sub(r"#", "", text)
+    text = re.sub(r"=", "", text)
+    return text
+
+dfFull["TEXT_CONCAT"] = dfFull["TEXT_CONCAT"].progress_apply(regex_pharmacy_clean)
+dfFull["TEXT_CONCAT"] = dfFull["TEXT_CONCAT"].progress_apply(clean_symbols)
+
 dfFull.to_csv(os.path.join(work_dir, 'Data/CLEANED_FULL_UADM.csv'), index=False)
