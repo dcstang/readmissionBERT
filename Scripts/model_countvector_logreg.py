@@ -9,7 +9,6 @@ import eli5
 import pickle 
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from joblib import Parallel, delayed
 from imblearn.over_sampling import SMOTE
 
 from sklearn.pipeline import Pipeline
@@ -25,6 +24,7 @@ from sklearn.metrics import roc_auc_score, accuracy_score, \
 path = os.getcwd()
 work_dir = os.path.join(path, 'Sem 2 - Machine Learning/Project')
 
+## TODO: change path to remerged post lemmatization
 dfUadm = pd.read_csv(os.path.join(work_dir, 'Data/CLEANED_FULL_UADM.csv'),
       dtype={'SUBJECT_ID' : 'UInt32', 'HADM_ID' : 'UInt32', 'TEXT_CONCAT' : 'string',
          'ADMISSION_TYPE' : 'string', 'ETHNICITY' : 'string', 'DIAGNOSIS' : 'string',
@@ -35,71 +35,6 @@ dfUadm = pd.read_csv(os.path.join(work_dir, 'Data/CLEANED_FULL_UADM.csv'),
 
 tqdm.pandas(desc="Pandas Apply Progress")
 
-# Logistic Regression Preprocessing            
-# full stripping of numeric entities and dash for logistic reg and SVM
-
-def regex_strip_down(text):
-	text = re.sub(r"<PAR>", "", text)
-	text = re.sub(r"[\d.]", "", text)
-	text = re.sub(r"-", "", text)
-	text = re.sub(r"\d+", "", text)
-	text = re.sub(r":", "", text)
-	text = re.sub(r"\s+" , " ", text)
-	text = re.sub(r"%", "", text)
-	return text
-
-def regex_strip_secondary(text):
-	text = re.sub(r",", "", text)
-	text = re.sub(r"//", "", text)
-	text = re.sub(r"yo", "", text)
-	text = re.sub(r"date", "", text)
-	return text
-
-def regex_question(text):
-	text = re.sub(r"\?", "", text)
-	return text
-
-dfUadm['TEXT_CONCAT'] = dfUadm['TEXT_CONCAT'].progress_apply(regex_strip_down)
-dfUadm['TEXT_CONCAT'] = dfUadm['TEXT_CONCAT'].progress_apply(regex_strip_secondary)
-dfUadm['TEXT_CONCAT'] = dfUadm['TEXT_CONCAT'].progress_apply(regex_question)
-dfUadm.to_csv(os.path.join(work_dir, 'Data/stripped_CLEANED_FULL_UADM.csv'), index=False)
-
-# split 5 chunks
-dfUadm.iloc[0:8493].to_csv(os.path.join(work_dir, 'Data/checkpoint/df_1.csv'), index=False)
-dfUadm.iloc[8493:16986].to_csv(os.path.join(work_dir, 'Data/checkpoint/df_2.csv'), index=False)
-dfUadm.iloc[16986:25479].to_csv(os.path.join(work_dir, 'Data/checkpoint/df_3.csv'), index=False)
-dfUadm.iloc[25479:33972].to_csv(os.path.join(work_dir, 'Data/checkpoint/df_4.csv'), index=False)
-dfUadm.iloc[33972:42465].to_csv(os.path.join(work_dir, 'Data/checkpoint/df_5.csv'), index=False)
-
-# init spacy specifically for lemmatization
-nlp = spacy.load('en_core_sci_scibert', disable=['parser', 'ner'])
-
-# remove these from stopwords, negatives important in medical text
-nlp.Defaults.stop_words.remove('no')
-nlp.Defaults.stop_words.remove('not')
-stopwords = nlp.Defaults.stop_words
-
-# use spacy.pipe with multiprocessing if faster?
-lemmatizer = nlp.get_pipe("lemmatizer")
-
-## nlp pipe version ? data parallelization on HPC
-
-
-def lemmatize_pipe(doc):
-	lemma_list = [token.lemma_ for token in doc if not token.is_stop] 
-	return " ".join(lemma_list)
-
-def preprocess_pipe(texts):
-	preproc_pipe = []
-	for doc in nlp.pipe(texts, batch_size=1000):
-		preproc_pipe.append(lemmatize_pipe(doc))
-	return preproc_pipe
-		
-
-
-
-# execute stopword removal and lemmatization
-dfUadm['TEXT_CONCAT'] = preprocess_pipe(dfUadm['TEXT_CONCAT'])
 
 # train-test-split
 X = dfUadm.TEXT_CONCAT
