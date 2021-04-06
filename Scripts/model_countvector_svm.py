@@ -88,6 +88,7 @@ def use_svm(kernel, weights=None, penalty=1, gamma=1):
     #Metrics
     fpr, tpr, _ = roc_curve(y_test, y_pred)
 
+    ax = plt.gca()
     plot_roc_curve(clf, x_test_dtm, y_test, ax=ax, label=f'SVM {kernel} (AUC = {auc(fpr,tpr):.2f})')
 
     print(f'Confusion Matrix:{confusion_matrix(y_test, y_pred)}')
