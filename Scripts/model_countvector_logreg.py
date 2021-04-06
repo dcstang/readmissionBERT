@@ -153,11 +153,15 @@ def plot_roc(y_pred):
 	plt.xlabel('False positive rate')
 	plt.ylabel('True positive rate')
 	plt.title('ROC curve')
-	plt.savefig(os.path.join(work_dir, "Models/Logreg/roc.png"))
+	plt.savefig(os.path.join(work_dir, "Models/Logreg/countvec_roc.png"))
 	plt.show()
 
 y_pred = evaluation_plotting(logit)
 
 # save model
-with open(os.path.join(work_dir, "Models/Logreg/logreg.pkl"), "wb") as file:
+with open(os.path.join(work_dir, "Models/Logreg/countvec_logreg.pkl"), "wb") as file:
     pickle.dump(logit, file)
+
+# save preds and y_test
+np.savetext(os.path.join(work_dir, "Models/svm/y_pred.csv"), y_test, delimiter=',')
+np.savetext(os.path.join(work_dir, "Models/svm/y_pred.csv"), y_pred, delimiter=',')
