@@ -61,7 +61,7 @@ dfUadm = pd.read_csv(os.path.join(work_dir, 'Data/stripped_CLEANED_FULL_UADM.csv
 dfUadm.iloc[0:4246].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df_1.csv'), index=False)
 dfUadm.iloc[4246:8492].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df_2.csv'), index=False)   #done
 dfUadm.iloc[8492:12738].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df_3.csv'), index=False)  #done
-dfUadm.iloc[12738:16984].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df_4.csv'), index=False)
+dfUadm.iloc[12738:16984].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df_4.csv'), index=False) #missed!
 dfUadm.iloc[16984:21230].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df_5.csv'), index=False)
 dfUadm.iloc[21230:25476].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df_6.csv'), index=False)
 dfUadm.iloc[25476:29722].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df_7.csv'), index=False)
@@ -70,12 +70,12 @@ dfUadm.iloc[33968:38214].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc
 dfUadm.iloc[38214:42465].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df_10.csv'), index=False)
 
 # redo-second
-dfUadm.iloc[0:2123].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df2_1.csv'), index=False)
-dfUadm.iloc[2123:4246].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df2_2.csv'), index=False)
-dfUadm.iloc[4246:6369].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df2_3.csv'), index=False)
-dfUadm.iloc[6369:8492].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df2_4.csv'), index=False)
+dfUadm.iloc[0:2123].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df2_1.csv'), index=False)		#done
+dfUadm.iloc[2123:4246].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df2_2.csv'), index=False)	#
+dfUadm.iloc[4246:6369].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df2_3.csv'), index=False)	#
+dfUadm.iloc[6369:8492].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df2_4.csv'), index=False)	#done
 
-dfUadm.iloc[16984:19107].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df2_5.csv'), index=False)
+dfUadm.iloc[16984:19107].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df2_5.csv'), index=False)	#done
 dfUadm.iloc[19107:21230].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df2_6.csv'), index=False)
 dfUadm.iloc[23353:25476].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df2_7.csv'), index=False)
 dfUadm.iloc[27599:29722].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df2_8.csv'), index=False)
@@ -91,6 +91,8 @@ dfUadm.iloc[38212:39273].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc
 dfUadm.iloc[39273:40334].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df3_6.csv'), index=False)
 dfUadm.iloc[40334:41395].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df3_7.csv'), index=False)
 dfUadm.iloc[41395:42465].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df3_8.csv'), index=False)
+dfUadm.iloc[12738:14861].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df3_9.csv'), index=False)
+dfUadm.iloc[14861:16984].to_csv(os.path.join(work_dir, 'Data/checkpoint/splithpc/df3_10.csv'), index=False)
 # till 42465
 
 ### nlp pipe -- data parallelization ###
@@ -113,26 +115,20 @@ print('Loading ... ', os.path.join(work_dir, '../datasplit/df_{}.csv'.format(csv
 
 
 # init spacy specifically for lemmatization
-nlp = spacy.load('en_core_sci_scibert', disable=['parser', 'ner'])
+nlp = spacy.load('en_core_sci_scibert', exclude=['parser', 'ner'])
 
 # remove these from stopwords, negatives important in medical text
 nlp.Defaults.stop_words.remove('no')
 nlp.Defaults.stop_words.remove('not')
-stopwords = nlp.Defaults.stop_words
-lemmatizer = nlp.get_pipe("lemmatizer")
+nlp.max_length = 5000000
 
-def lemmatize_pipe(doc):
-	lemma_list = [token.lemma_ for token in doc if not token.is_stop] 
-	return " ".join(lemma_list)
+lemma = []
+for doc in nlp.pipe(dfUadm['TEXT_CONCAT'].iloc[0:100].values):
+	lemma.append([n.lemma_ for n in doc if not n.is_stop])
 
-def preprocess_pipe(texts):
-	preproc_pipe = []
-	for doc in nlp.pipe(texts, n_process=12, batch_size=1000):
-		preproc_pipe.append(lemmatize_pipe(doc))
-	return preproc_pipe
-		
 # execute stopword removal and lemmatization
-df['TEXT_CONCAT'] = preprocess_pipe(df['TEXT_CONCAT'])
+df['TEXT_CONCAT'] = lemma
+df['TEXT_CONCAT'] = df['TEXT_CONCAT'].progress_apply(' '.join)
 
 # save first and merge later
 df.to_csv(os.path.join(work_dir, '../lemmatized/df_lem_{}.csv'.format(csvindex)), index=False)
