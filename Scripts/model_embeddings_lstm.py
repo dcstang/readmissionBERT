@@ -3,8 +3,6 @@ import numpy as np
 import os
 import re
 import io
-import string 
-import pickle 
 import matplotlib.pyplot as plt
 import spacy
 import scispacy
@@ -17,7 +15,6 @@ from sklearn.metrics import roc_auc_score, accuracy_score, \
 
 import tensorflow as tf
 import keras
-from keras.preprocessing.text import Tokenizer
 from keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras import Sequential
 from tensorflow.keras.layers import Dense, Embedding, GlobalAveragePooling1D
@@ -26,7 +23,7 @@ from tensorflow.keras.layers.experimental.preprocessing import TextVectorization
 path = os.getcwd()
 work_dir = os.path.join(path, 'Sem 2 - Machine Learning/Project')
 
-dfUadm = pd.read_csv(os.path.join(work_dir, 'Data/lemmatized_stripped_CLEANED_FULL_UADM.csv'),
+dfUadm = pd.read_csv(os.path.join(work_dir, 'Data/lemma_dfUadm.csv'),
       dtype={'SUBJECT_ID' : 'UInt32', 'HADM_ID' : 'UInt32', 'TEXT_CONCAT' : 'string',
          'ADMISSION_TYPE' : 'string', 'ETHNICITY' : 'string', 'DIAGNOSIS' : 'string',
          'HOSPITAL_EXPIRE_FLAG' : 'bool', 'MORTALITY_30D' : 'bool', 'TARGET' : 'bool',
@@ -34,7 +31,12 @@ dfUadm = pd.read_csv(os.path.join(work_dir, 'Data/lemmatized_stripped_CLEANED_FU
       parse_dates=['ADMITTIME', 'DISCHTIME', 'NEXT_UADMITTIME', 'DOD_SSN'],
       header=0)
 
+def final_clean(text):
+    text = re.sub(r"[^a-zA-Z\d\s:]", "", text)
+    text = re.sub(r"\b[a-zA-Z]\b", "", text)
+    return text
 
+dfUadm['TEXT_CONCAT'] = dfUadm['TEXT_CONCAT'].apply(final_clean)
 
 X = dfUadm.TEXT_CONCAT
 Y = dfUadm.TARGET
@@ -55,14 +57,28 @@ AUTOTUNE = tf.data.AUTOTUNE
 train_ds = train_ds.cache().prefetch(buffer_size=AUTOTUNE)
 val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
 """
+gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
+tf.config.experimental.set_visible_devices(devices=gpus[0], device_type='GPU')
+tf.config.experimental.set_memory_growth(device=gpus[0], enable=True)
 
+tf.config.set_visible_devices([], 'GPU')
+
+spacy.prefer_gpu()
 nlp = spacy.load("en_core_sci_md")
 # TextVectorization - to work on different lengths 
 # vectorize top 0.5M words
 # each sequence padded to 2000 tokens TODO: find out doc length
-vectorizer = TextVectorization(max_tokens=500000, output_sequence_length=2000)
+vocab_size = 1000
+maxlen = 20
+
+vectorizer = TextVectorization(
+					max_tokens=vocab_size, 
+					standardize=None,
+					output_sequence_length=maxlen,
+					output_mode='int')
+
 # text_ds = tf.data.Dataset.from_tensor_slices(train_samples).batch(128)
-vectorizer.adapt(x_train)
+vectorizer.adapt(x_train[0:10].to_numpy())
 
 # get vocabulary ie. vector mappings of each word
 vocab = vectorizer.get_vocabulary()
@@ -74,10 +90,8 @@ t1 = vectorizer([['medical discharge coronary artery disease']])
 t1.numpy()[0, :5]
 
 #generate the embedding matrix
-num_tokens = len(vocab)
 embedding_dim = len(nlp('The').vector)
-
-embedding_matrix = np.zeros((num_tokens, embedding_dim))
+embedding_matrix = np.zeros((vocab_size, embedding_dim))
 
 for i, word in enumerate(vocab):
     embedding_matrix[i] = nlp(word).vector
@@ -87,29 +101,31 @@ print("Found %s word vectors." % len(embedding_matrix))
 
 # load pre-trained embeddings into embedding layer
 embedding_layer = Embedding(
-    num_tokens,
+    vocab_size,
     embedding_dim,
     embeddings_initializer=keras.initializers.Constant(embedding_matrix),
-    trainable=False, # transfer learning 
+    trainable=False, 
+	mask_zero=True
 )
 
 
 model = tf.keras.Sequential([
-    tf.keras.Input(shape=(None,)),
+	vectorizer,
     embedding_layer,
     tf.keras.layers.Bidirectional(tf.keras.layers.LSTM(64)),
     tf.keras.layers.Dense(16, activation='relu'),
-    tf.keras.layers.Dense(1)
+    tf.keras.layers.Dense(1, activation='sigmoid')
 ])
 
 model.compile(loss=tf.keras.losses.BinaryCrossentropy(from_logits=True),
               optimizer=tf.keras.optimizers.Adam(0.001),
               metrics=[tf.keras.metrics.AUC()])
 
-history = model.fit(x_train, y_train, epochs=10, batch_size=16,
+history = model.fit(x_train[0:10].to_numpy(), y_train, epochs=1, batch_size=5,
                     validation_split=0.15)
 
 
+history = model.fit(x_train[0:10].to_numpy(), y_train[0:10].to_numpy(), epochs=1)
 model.summary()
 
 def evaluation_plotting(history, model, save_path):

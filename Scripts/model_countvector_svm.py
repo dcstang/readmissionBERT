@@ -8,7 +8,7 @@ import pickle
 import matplotlib.pyplot as plt
 from imblearn.over_sampling import SMOTE
 
-from sklearn.pipeline import Pipeline
+# from sklearn.pipeline import Pipeline
 from sklearn import svm
 from sklearn.preprocessing import StandardScaler
 from sklearn.feature_extraction.text import TfidfTransformer
@@ -109,5 +109,5 @@ with open(os.path.join(work_dir, "Models/svm/countvec_svm.pkl"), "wb") as file:
     pickle.dump(best_svm, file)
 
 # save preds and y_test
-np.savetext(os.path.join(work_dir, "Models/svm/y_pred.csv"), y_test, delimiter=',')
-np.savetext(os.path.join(work_dir, "Models/svm/y_pred.csv"), y_pred, delimiter=',')
+np.savetxt(os.path.join(work_dir, "Models/svm/y_pred.csv"), y_test, delimiter=',')
+np.savetxt(os.path.join(work_dir, "Models/svm/y_pred.csv"), y_pred, delimiter=',')
