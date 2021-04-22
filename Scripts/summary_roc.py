@@ -13,9 +13,9 @@ work_dir = os.path.join(path, 'Sem 2 - Machine Learning/Project')
 
 model_name = [
     'SWIFT Score                   ',
-    'Count Vector + Logistic   ',
-    'Embeddings + Logistic    ', 
-    'Count Vector + SVM       ',
+    'Count Vector + Logistic    ',
+    'Embeddings + Logistic     ', 
+    'Count Vector + SVM        ',
     'Embeddings + Deep LSTM   ']
 model_paths = ['Models/SwiftScore', 'Models/Logreg',  'Models/Logreg', 'Models/svm', 'Models/LSTM']
 model_nicknames = ['swiftscore', 'countvec_logreg', 'embedding_logreg', 'countvec_svm']
@@ -26,7 +26,7 @@ fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(18, 11.125))
 fig.patch.set_facecolor('#EEEBE2')
 ax.set_facecolor('#EEEBE2')
 
-plt.plot([0, 1], [0, 1], color='#B2B2B2', linestyle=(0, (6, 25)))
+plt.plot([0, 1], [0, 1], color='#CAC1A5', linestyle=(0, (9, 25)), linewidth = 0.8)
 
 for n in range(0, 4):
 #for n in range(len(window_paths)):
@@ -38,10 +38,12 @@ for n in range(0, 4):
         '{}_y_pred.csv'.format(model_nicknames[n])),
         header=None)
 
-    fpr, tpr, thresholds = roc_curve(y_test, y_pred)
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred)    
+
     auc_keras = auc(fpr, tpr)
 
-    plt.plot(fpr, tpr, label=f'{model_name[n]} AUC: {auc_keras:.2f}')
+    plt.plot(fpr, tpr, label=f'{model_name[n]} AUC: {auc_keras:.2f}',
+            linewidth=2.2, alpha=0.85)
 
 
 plt.xticks(np.arange(0.0, 1.05, step=0.2))
