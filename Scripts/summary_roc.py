@@ -18,7 +18,7 @@ model_name = [
     'Count Vector + SVM       ',
     'Embeddings + Deep LSTM   ']
 model_paths = ['Models/SwiftScore', 'Models/Logreg',  'Models/Logreg', 'Models/svm', 'Models/LSTM']
-model_nicknames = ['swiftscore', 'countvec_logreg', 'embedding_logreg']
+model_nicknames = ['swiftscore', 'countvec_logreg', 'embedding_logreg', 'countvec_svm']
 
 plt.close()
 plt.style.use('seaborn')
@@ -28,13 +28,15 @@ ax.set_facecolor('#EEEBE2')
 
 plt.plot([0, 1], [0, 1], color='#B2B2B2', linestyle=(0, (6, 25)))
 
-for n in range(0, 3):
+for n in range(0, 4):
 #for n in range(len(window_paths)):
 
-    y_test = pd.read_csv(os.path.join(work_dir, model_paths[n], '{}_y_test.csv'.format(model_nicknames[n])),
-    header=None)
-    y_pred = pd.read_csv(os.path.join(work_dir, model_paths[n], '{}_y_pred.csv'.format(model_nicknames[n])),
-    header=None)
+    y_test = pd.read_csv(os.path.join(work_dir, model_paths[n], 
+        '{}_y_test.csv'.format(model_nicknames[n])),
+        header=None)
+    y_pred = pd.read_csv(os.path.join(work_dir, model_paths[n], 
+        '{}_y_pred.csv'.format(model_nicknames[n])),
+        header=None)
 
     fpr, tpr, thresholds = roc_curve(y_test, y_pred)
     auc_keras = auc(fpr, tpr)

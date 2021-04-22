@@ -123,20 +123,25 @@ df_Swift['SWIFTSCORE'] = df_Swift['ADMDURSCORE'] + df_Swift['INSPSCORE'] + \
     df_Swift['GCSCORE'] + df_Swift['PACO2SCORE']
 
 
-# make preds
+# make class preds
 conditions = [(df_Swift['SWIFTSCORE'] >= 15), (df_Swift['SWIFTSCORE'] < 15)]
 swiftScore = [True, False]
 df_Swift['SWIFTPRED'] = np.select(conditions, swiftScore, default=False)
 
-df_Swift.to_csv(os.path.join(work_dir, 'Data/SWIFTSCORE.csv'), index=False)
+# make prob preds ~ 3.5% per point on SWIFT (simplified implementation)
+# https://doi.org/10.1371/journal.pone.0143127
+# ranges from 1 to 48
 
+df_Swift['SWIFTPROB'] = df_Swift['SWIFTSCORE'] * 0.035
+
+df_Swift.to_csv(os.path.join(work_dir, 'Data/SWIFTSCORE.csv'), index=False)
 
 # calculate ROC
 accuracy = accuracy_score(df_Swift['TARGET'], df_Swift['SWIFTPRED'])
 precision = precision_score(df_Swift['TARGET'], df_Swift['SWIFTPRED'])
 recall = recall_score(df_Swift['TARGET'], df_Swift['SWIFTPRED'])
 f1 = f1_score(df_Swift['TARGET'], df_Swift['SWIFTPRED'])
-auc = roc_auc_score(df_Swift['TARGET'], df_Swift['SWIFTPRED'])
+auc = roc_auc_score(df_Swift['TARGET'], df_Swift['SWIFTPROB'])
 matrix = confusion_matrix(df_Swift['TARGET'], df_Swift['SWIFTPRED'])
 
 print('Accuracy: %f' % accuracy)
@@ -146,5 +151,5 @@ print('F1 score: %f' % f1)
 print('ROC AUC: %f' % auc)
 print(matrix)
 
-df_Swift['SWIFTPRED'].to_csv(os.path.join(work_dir, 'Models/SwiftScore/y_pred.csv'), index=False)
-df_Swift['TARGET'].to_csv(os.path.join(work_dir, 'Models/SwiftScore/y_test.csv'), index=False)
+df_Swift['SWIFTPROB'].to_csv(os.path.join(work_dir, 'Models/SwiftScore/y_pred.csv'), index=False, header=False)
+df_Swift['TARGET'].to_csv(os.path.join(work_dir, 'Models/SwiftScore/y_test.csv'), index=False, header=False)
