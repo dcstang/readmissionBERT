@@ -33,9 +33,10 @@ tf.config.threading.set_intra_op_parallelism_threads(20)
 tf.config.threading.set_inter_op_parallelism_threads(15)
 print(tf.config.threading.get_inter_op_parallelism_threads())
 
-work_dir = os.getcwd() #.. mimic/script
+path = os.getcwd() #.. mimic/script
+work_dir = os.path.join(path, 'Sem 2 - Machine Learning/Project/Scripts')
 
-dfUadm = pd.read_csv(os.path.join(work_dir, '../lemmatized/lemma_dfUadm.csv'),
+dfUadm = pd.read_csv(os.path.join(work_dir, '../Data/lemma_dfUadm.csv'),
 	  dtype={'SUBJECT_ID' : 'UInt32', 'HADM_ID' : 'UInt32', 'TEXT_CONCAT' : 'string',
 		 'ADMISSION_TYPE' : 'string', 'ETHNICITY' : 'string', 'DIAGNOSIS' : 'string',
 		 'HOSPITAL_EXPIRE_FLAG' : 'bool', 'MORTALITY_30D' : 'bool', 'TARGET' : 'bool',
@@ -46,19 +47,20 @@ dfUadm = pd.read_csv(os.path.join(work_dir, '../lemmatized/lemma_dfUadm.csv'),
 def final_clean(text):
 	text = re.sub(r"[^a-zA-Z\d\s:]", "", text)
 	text = re.sub(r"\b[a-zA-Z]\b", "", text)
+	text = re.sub(r"\b\w{1,4}\b", "", text)
 	text = re.sub(r"\s\s+", " ", text)
-	text = re.sub(r"(^(?:\S+\s+\n?){1,12})", "", text)
+	text = re.sub(r"(^(?:\S+\s+\n?){1,20})", "", text)
 	return text
 
 dfUadm['TEXT_CONCAT'] = dfUadm['TEXT_CONCAT'].apply(final_clean)
+
 
 X = dfUadm.TEXT_CONCAT
 Y = dfUadm.TARGET
 
 x_train, x_test, y_train, y_test = train_test_split(X, Y, test_size = 0.15, random_state=77, stratify=Y)
-del dfUadm # save some memory
 
-# perform text augmentation of x_train
+
 print("Initial stratified test_train_split 0.15 and info about train_set:")
 print("Number and prop(%) of cases   : ", (y_train == 1).sum(), 
 			", % =", round((y_train == 1).sum()/len(y_train), 3))
@@ -68,6 +70,18 @@ print("Number and prop(%) of controls: ", (y_train == 0).sum(),
 repeatCases = len(y_train.index[y_train == True])
 x_train = x_train.append([x_train[y_train[y_train==True].index]]*4)
 y_train = y_train.append([y_train[y_train==True]]*4)
+
+# TODO: implement tf.data.Dataset pipeline instead?
+# save memory and no need to store EDA cases 
+
+words_ds = tf.data.Dataset.from_tensor_slices(
+	(x_train.values, 
+	y_train.values))
+
+words_ds = words_ds.shuffle(len(x_train))
+
+for features_tensor, target_tensor in words_ds.take(3):
+		print(features_tensor, target_tensor)
 
 # text augmentation to replicated true cases
 t = EDA()
@@ -130,7 +144,7 @@ embedding_layer = Embedding(
 	mask_zero=True
 )
 
-if BIDRECTIONAL == True:
+if BIDIRECTIONAL == True:
 	# bidirectional implementation
 	model = tf.keras.Sequential([
 		vectorizer,

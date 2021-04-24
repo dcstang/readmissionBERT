@@ -55,8 +55,8 @@ print("Number and prop(%) of controls: ", (y_train == 0).sum(),
 # embeddings for logreg
 nlp = spacy.load("en_core_sci_md")
 
-vocab_size = 100000
-maxlen = 30
+vocab_size = 50000
+maxlen = 100
 
 vectorizer = TextVectorization(
 					max_tokens=vocab_size, 

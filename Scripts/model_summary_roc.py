@@ -52,8 +52,8 @@ plt.xlabel("False Positive Rate", fontsize=18)
 plt.yticks(np.arange(0.0, 1.05, step=0.2))
 plt.ylabel("True Positive Rate", fontsize=18)
 
-ax.spines[['bottom', 'left']].set_visible(True)
-ax.spines[['bottom', 'left']].set_color('black')
+ax.spines['bottom'].set_visible(True)
+ax.spines['bottom'].set_color('black')
 
 ax.grid(which='both', color='black')#F1EFE4
 
