@@ -104,5 +104,7 @@ out_m = pd.read_csv(os.path.join(work_dir, 'Models/Embeddings/metadata.tsv'), he
 out_m = out_m[(out_v.sum(axis=1) != 0)]
 out_v = out_v[(out_v.sum(axis=1) != 0)]
 
-out_m.to_csv(os.path.join(work_dir, 'Models/Embeddings/vectors_cleaned.tsv'), index=False, sep='\t', header=False)
-out_v.to_csv(os.path.join(work_dir, 'Models/Embeddings/metadata_cleaned.tsv'), index=False, sep='\t', header=False)
+out_m.to_csv(os.path.join(work_dir, 'Models/Embeddings/metadata_cleaned.tsv'), index=False, sep='\t', header=False)
+out_v.to_csv(os.path.join(work_dir, 'Models/Embeddings/vectors_cleaned.tsv'), index=False, sep='\t', header=False)
+
+# visualize on tensorboard embeddings
