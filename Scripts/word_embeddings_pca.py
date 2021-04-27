@@ -85,8 +85,8 @@ text_to_embeddings = tf.keras.Sequential([
 
 weights = text_to_embeddings.get_layer('embedding_1').get_weights()[0]
 
-out_v = io.open(os.path.join(work_dir, 'Models/Embeddings/vectors.tsv'), 'w', encoding='utf-8')
-out_m = io.open(os.path.join(work_dir, 'Models/Embeddings/metadata.tsv'), 'w', encoding='utf-8')
+out_v = io.open(os.path.join(work_dir, '../Models/Embeddings/vectors_small.tsv'), 'w', encoding='utf-8')
+out_m = io.open(os.path.join(work_dir, '../Models/Embeddings/metadata_small.tsv'), 'w', encoding='utf-8')
 
 for index, word in enumerate(vocab):
   if index == 0:
@@ -97,14 +97,14 @@ for index, word in enumerate(vocab):
 out_v.close()
 out_m.close()
 
-out_v = pd.read_csv(os.path.join(work_dir, 'Models/Embeddings/vectors.tsv'), sep='\t', header=None)
-out_m = pd.read_csv(os.path.join(work_dir, 'Models/Embeddings/metadata.tsv'), header=None)
+out_v = pd.read_csv(os.path.join(work_dir, '../Models/Embeddings/vectors_small.tsv'), sep='\t', header=None)
+out_m = pd.read_csv(os.path.join(work_dir, '../Models/Embeddings/metadata_small.tsv'), header=None)
 
 (out_v.sum(axis=1) == 0).sum()
 out_m = out_m[(out_v.sum(axis=1) != 0)]
 out_v = out_v[(out_v.sum(axis=1) != 0)]
 
-out_m.to_csv(os.path.join(work_dir, 'Models/Embeddings/metadata_cleaned.tsv'), index=False, sep='\t', header=False)
-out_v.to_csv(os.path.join(work_dir, 'Models/Embeddings/vectors_cleaned.tsv'), index=False, sep='\t', header=False)
+out_m.to_csv(os.path.join(work_dir, '../Models/Embeddings/metadata_small.tsv'), index=False, sep='\t', header=False)
+out_v.to_csv(os.path.join(work_dir, '../Models/Embeddings/vectors_small.tsv'), index=False, sep='\t', header=False)
 
 # visualize on tensorboard embeddings
